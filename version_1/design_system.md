@@ -36,16 +36,16 @@ The headings are using a chunky letterforms to have a playful feel while still s
 the mockups are built in HTML/CSS (`mockup.html` + `mockup.css`) using the colour palette and fonts outlined. the code is commented to explain what each section is 
 
 # Game Board (Desktop)
-![Full game screen on desktop] ()
+![Full game screen on desktop](images/full_Board.png)
 
 # Scorecard
-![the scoreboard for the game paper like] ()
+![the scoreboard for the game paper like](images/Scorecard.png)
 
 # Game over screen
-![a game over screen once the game is over] ()
+![a game over screen once the game is over](images/game_over.png)
 
 # Mobile 
-![game screen on a phone] ()
+![game screen on a phone](images/Mobile.png)
 
 ## 4. Layout
 - **Header**: has game title, under the round counter and in the right corner the total score 

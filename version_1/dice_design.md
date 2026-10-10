@@ -1,6 +1,6 @@
 # Yatzy Dice Design 
 
-![Dice design: all six faces] ()
+![Dice design: all six faces](images/dice_tray.png)
 
 # size and shape
 - each die is **88 px** on a desktop and shrinks to **56 px** on a phone 
