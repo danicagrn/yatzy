@@ -141,6 +141,18 @@ function renderControls() {
 }
 
 function renderMessage() {
+    let hint = "";
+    if (game.rollsUsed > 0 && !game.isGameOver) {
+        const options = Object.keys(game.engine.scoreTable)
+            .filter((cat) => game.engine.scoreTable[cat] === null)
+            .map((cat) => [cat, game.engine.calculateScore(cat, game.dice.values)])
+            .filter(([, pts]) => pts > 0)
+            .sort((a, b) => b[1] - a[1])
+            .slice(0, 3);
+        if (options.length) {
+            hint = "Best options: " + options.map(([cat, pts]) => `${INFO[cat][0]} ${pts}`).join(",");
+        }
+    }
     $("message").innerHTML = `<p>${message}</p>`;
 }
 
