@@ -3,7 +3,7 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
-        <title> Yatzy</title>
+        <title>Yatzy</title>
         <!-- Fonts -->
          <link rel="preconnect" href="https://fonts.googleapis.com">
          <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -22,8 +22,8 @@
                 </div>
 
                 <div class="round-info">
-                    <p id ="round-text">Round 1 of 15</p>
-                    <!--Bar width for rounds completed (6 of 15 = 40%) -->
+                    <p id="round-text">Round 1 of 15</p>
+                    <!--Bar width for rounds completed -->
                     <div class="round-bar" id="round-bar" role="progressbar" aria-label="Rounds completed"
                             aria-valuemin="0" aria-valuemax="15" aria-valuenow="0">
                         <span id="round-fill" style="width: 0%"></span>
@@ -45,7 +45,7 @@
                     <!--Main actions -->
                     <div class="controls">
                         <button class="btn btn-primary" id="roll-btn">Roll dice</button>
-                    <button class ="btn btn-secondary" id="score-btn" disabled>Pick a category</button>
+                    <button class="btn btn-secondary" id="score-btn" disabled>Pick a category</button>
                     </div>
 
                     <!--Live message area: tells the player what just happened -->
@@ -63,7 +63,7 @@
                                 <th scope="col" class="num">Score</th>
                             </tr>
                         </thead>
-                        <tbody id ="score-body"></tbody>
+                        <tbody id="score-body"></tbody>
                     </table>
                 </section>
             </main>

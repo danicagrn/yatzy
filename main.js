@@ -140,20 +140,70 @@ function renderControls() {
     }
 }
 
-function renderMessage() {
-    let hint = "";
-    if (game.rollsUsed > 0 && !game.isGameOver) {
-        const options = Object.keys(game.engine.scoreTable)
-            .filter((cat) => game.engine.scoreTable[cat] === null)
-            .map((cat) => [cat, game.engine.calculateScore(cat, game.dice.values)])
-            .filter(([, pts]) => pts > 0)
-            .sort((a, b) => b[1] - a[1])
-            .slice(0, 3);
-        if (options.length) {
-            hint = "Best options: " + options.map(([cat, pts]) => `${INFO[cat][0]} ${pts}`).join(",");
+const NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five"];
+
+// the sentence case 
+const sentenceCase = (text) => text.charAt(0) + text.slice(1).toLowerCase();
+
+// describes which dice are held 
+function describeHeld() {
+    const counts = {}
+    game.dice.held.forEach((isHeld, i) => {
+        if (isHeld) {
+            const face = game.dice.values[i];
+            counts [face] = (counts[face] || 0) + 1;
         }
+    });
+    const parts = Object.entries(counts)
+        .sort((a, b) => b[1] - a[1] || b[0] - a[0])
+        .map(([face, n]) => `${NUMBER_WORDS[n]} ${face}${n > 1 ?"s" : ""}`);
+    if (parts.length <= 1) return parts.join("");
+    return parts.slice(0, -1).join(",") + " and " + parts[parts.length -1];    
+}
+
+// second line of message box: what the best open categories would score
+// the category the player has clicked (if any) is listed first 
+function scoringHint() {
+    const open = Object.keys(game.engine.scoreTable)
+        .filter((cat) => game.engine.scoreTable[cat] === null)
+        .map((cat) => ({cat, pts: game.engine.calculateScore(cat, game.dice.values) }));
+    
+    let options = open.filter((o) => o.pts > 0). sort((a, b) => b.pts - a.pts).slice(0, 3);
+    if (selectedCategory) {
+        const chosen = open.find((o) => o.cat === selectedCategory);
+        options = [chosen, ...options.filter((o) => o.cat !== selectedCategory)].slice(0, 3);
     }
-    $("message").innerHTML = `<p>${message}</p>`;
+    if (options.length === 0) {
+        return "Nothing scores right now. You can enter a 0 in a category you can afford to lose.";
+    }
+    return options.map((o, i) => {
+        const name = sentenceCase(INFO[o.cat][0]);
+        const also = i > 0 && o.pts === options[i - 1].pts ? "also" : "";
+        return `${name} would ${also} score ${o.pts}`;
+    }).join(" ");
+}
+
+function renderMessage() {
+    let line1 = message;
+    let line2 = "";
+
+    if (game.isGameOver) {
+        line1 = `Game over. Your final score is ${game.totalScore}.`;
+    } else if (game.rollsUsed > 0) {
+        const holding = describeHeld();
+        if (game.rollsUsed >= 3) {
+            line1 = "No rolls left. Pick a category to score.";
+        } else if (game.dice.held.every(Boolean)) {
+            line1 = "You are holding all five dice. Pick a category to score.";
+        } else if (holding) {
+            line1 = `You are holding ${holding}. Roll again or score them.`;
+        } else {
+            line1 = `Roll ${game.rollsUsed} done. Hold dice and roll again or pick a category to score.`
+        }
+        line2 = scoringHint();
+    }
+
+    $("message").innerHTML = `<p>${line1}</p>` + (line2 ? `<p>${line2}</p>` : "");
 }
 
 function render() {
@@ -170,10 +220,6 @@ function render() {
 function handleRoll() {
     if (game.rollDice() === null) return;
     selectedCategory = null;
-    const left = 3 - game.rollsUsed;
-    message = left > 0
-        ? `Roll ${game.rollsUsed} done. Hold dice and roll again or pick a category to score.`
-        : "No rolls left. Pick a category to score.";
     render();
     //tumble animation on the dice that were just rolled
     document.querySelectorAll(".die-slot:not(.is-held) .die")
@@ -186,9 +232,7 @@ function handleHold(index) {
 }
 
 function handlePick(category) {
-    selectedCategory = category;
-    const pts = game.engine.calculateScore(category, game.dice.values);
-    message = `${INFO[category][0]} would score ${pts}. Press the score button to lock it in.`;
+    selectedCategory = category;;
     render()
 }
 
