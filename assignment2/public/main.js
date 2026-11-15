@@ -35,6 +35,10 @@ const PIPS = {
     6: ["tl", "tr", "ml", "mr", "bl", "br"],
 };
 
+// HTML for the pips of one die face (0 = blank die)
+const pipsFor = (value) => (PIPS[value] || [])
+    .map((pos) => `<span class="pip ${pos}"></span>`).join("");
+
 const GAME_ID_KEY = "yatzyGameId"; // remembered so a page refresh resumes the game
 
 let state = null;            // the latest game state sent by the server
@@ -44,9 +48,10 @@ let errorMessage = "";       // shown instead of the normal message when a reque
 let busy = false;            // true while a request is in flight
 
 // element shortcuts
+// named byId (not $) so it does not clash with jQuery's $
 const byId = (id) => document.getElementById(id);
-const rollBtn = $("roll-btn");
-const scoreBtn = $("score-btn");
+const rollBtn = byId("roll-btn");
+const scoreBtn = byId("score-btn");
 
 /* Server communication (Fetch API) */
 
@@ -88,7 +93,7 @@ async function run(action) {
             try {
                 await createGame();
                 selectedCategory = null;
-                $("gameover").hidden = true;
+                byId("gameover").hidden = true;
                 message = "The server lost your game, so a new one was started.";
             } catch (e) {
                 errorMessage = "Cannot reach the server. Is it running?";
@@ -107,14 +112,14 @@ async function run(action) {
 /* Rendering */
 
 function renderHeader() {
-    $("total-score").textContent = state.totalScore;
+    byId("total-score").textContent = state.totalScore;
     const total = state.totalRounds;
     const done = state.isGameOver ? total : state.currentRound - 1;
-    $("round-text").textContent = state.isGameOver
+    byId("round-text").textContent = state.isGameOver
         ? "Game complete"
         : `Round ${state.currentRound} of ${total}`;
-    $("round-fill").style.width = `${(done / total) * 100}%`;
-    $("round-bar").setAttribute("aria-valuenow", done);
+    byId("round-fill").style.width = `${(done / total) * 100}%`;
+    byId("round-bar").setAttribute("aria-valuenow", done);
 }
 
 function renderRollMeter() {
@@ -123,7 +128,7 @@ function renderRollMeter() {
     for (let i = 0; i < state.maxRolls; i++) {
         dots += `<span class="dot ${i < state.rollsUsed ? "used" : ""}"></span>`;
     }
-    $("roll-meter").innerHTML =
+    byId("roll-meter").innerHTML =
         dots + `<p>${left} roll${left === 1 ? "" : "s"} left</p>`;
 }
 
@@ -131,9 +136,8 @@ function renderDice() {
     const { values, held } = state.dice;
     const rolled = state.rollsUsed > 0;
 
-    $("dice-tray").innerHTML = values.map((value, i) => {
-        const pips = (PIPS[value] || [])
-            .map((pos) => `<span class="pip ${pos}"></span>`).join("");
+    byId("dice-tray").innerHTML = values.map((value, i) => {
+        const pips = pipsFor(value);
         const tag = !rolled ? "" : held[i] ? "Held" : "Will reroll";
         const label = rolled
             ? `Die ${i + 1}: ${value}, ${held[i] ? "held" : "will reroll"}`
@@ -174,7 +178,7 @@ function renderScorecard() {
     const upper = state.upperTotal;
     const pct = Math.min(100, Math.round((upper / 63) * 100));
 
-    $("score-body").innerHTML = `<tr class="section-row upper"><th colspan="3" scope="colgroup">Upper section</th></tr>
+    byId("score-body").innerHTML = `<tr class="section-row upper"><th colspan="3" scope="colgroup">Upper section</th></tr>
         ${UPPER_CATEGORIES.map(row).join("")}
         <tr class="subtotal"><th scope="row">Upper total</th>
             <td class="rule">${upper} of 63 needed
@@ -272,7 +276,7 @@ function renderMessage() {
     }
 
     // textContent keeps server-provided text from being treated as HTML
-    const box = $("message");
+    const box = byId("message");
     box.innerHTML = "";
     [line1, line2].filter(Boolean).forEach((text) => {
         const p = document.createElement("p");
@@ -291,13 +295,14 @@ function render() {
     renderMessage();
 }
 
-/* Actions (each one sends a request, then the server's answer is drawn)*/
-// jQuery dice rolling animation
-// every die that is NOT held spins two full turns while flickering through random faces
-// then settles on the value the server rolled (state.dice.values)
-// Each die lasts a bit longer than the one before, so they stop one by one
-// the flicker faces are only decoration, the real values always come from the server
-// returns a promise that resolves when the last die has stopped
+/* Actions (each one sends a request, then the server's answer is drawn) */
+
+// jQuery dice rolling animation.
+// Every die that is NOT held spins two full turns while flickering through random
+// faces, then settles on the value the SERVER rolled (state.dice.values).
+// Each die lasts a bit longer than the one before, so they stop one by one.
+// The flicker faces are only decoration; the real values always come from the server.
+// Returns a Promise that resolves when the last die has stopped.
 function animateDice() {
     const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
     if (!window.jQuery || reduceMotion) return Promise.resolve(); // no jQuery or motion off: skip
@@ -305,12 +310,12 @@ function animateDice() {
     const finished = [];
     $(".die-slot:not(.is-held) .die").each(function (order) {
         const $die = $(this);
-        const index = Number($die.att("data-index")); // which die this is (0 to 4)
+        const index = Number($die.attr("data-index")); // which die this is (0 to 4)
 
         $die.addClass("is-spinning"); // turns off the CSS transition while jQuery rotates
         const flicker = setInterval(() => {
-            $die.getHTML(pipsFor(1 + Math.floor(Math.random() * 6)));
-        }, 80)
+            $die.html(pipsFor(1 + Math.floor(Math.random() * 6)));
+        }, 80);
 
         finished.push(new Promise((resolve) => {
             // jQuery animates a plain object: "deg" goes 0 -> 720 and step() applies it
@@ -329,15 +334,13 @@ function animateDice() {
         }));
     });
     return Promise.all(finished);
-
-        
 }
 
 function handleRoll() {
     return run(async () => {
         state = await api("POST", `/api/games/${state.id}/roll`);
         selectedCategory = null;
-       // Draw the roll counter and dice now, but leave the scorecard and hints alone
+        // Draw the roll counter and dice now, but leave the scorecard and hints alone
         // until the animation ends so they don't give the result away early.
         renderRollMeter();
         renderDice();
@@ -357,6 +360,7 @@ function handleHold(index) {
 
 // Picking a category is just a UI selection, so it needs no server call
 function handlePick(category) {
+    if (busy) return; // dice are still rolling
     selectedCategory = category;
     render();
 }
@@ -384,14 +388,14 @@ function showGameOver(result) {
     else text = "Good effort. Better luck next time. You can beat this!";
     if (result.isNewBest) text += " New personal best!";
 
-    $("over-message").textContent = text;
-    $("over-final").textContent = f;
-    $("over-upper").textContent = result.upperTotal;
-    $("over-bonus").textContent = result.bonus;
-    $("over-lower").textContent = result.lowerTotal;
-    $("over-best").textContent = result.bestScore;
-    $("gameover").hidden = false;
-    $("gameover").scrollIntoView({ behavior: "smooth" });
+    byId("over-message").textContent = text;
+    byId("over-final").textContent = f;
+    byId("over-upper").textContent = result.upperTotal;
+    byId("over-bonus").textContent = result.bonus;
+    byId("over-lower").textContent = result.lowerTotal;
+    byId("over-best").textContent = result.bestScore;
+    byId("gameover").hidden = false;
+    byId("gameover").scrollIntoView({ behavior: "smooth" });
 }
 
 function newGame() {
@@ -400,7 +404,7 @@ function newGame() {
         state = await api("PUT", `/api/games/${state.id}/restart`);
         selectedCategory = null;
         message = "New game! Press Roll dice to start.";
-        $("gameover").hidden = true;
+        byId("gameover").hidden = true;
     });
 }
 
@@ -408,14 +412,14 @@ function newGame() {
 
 rollBtn.addEventListener("click", handleRoll);
 scoreBtn.addEventListener("click", handleScore);
-$("again-btn").addEventListener("click", newGame);
+byId("again-btn").addEventListener("click", newGame);
 
 // Event delegation: dice and scorecard are re-rendered, so listen on parents
-$("dice-tray").addEventListener("click", (e) => {
+byId("dice-tray").addEventListener("click", (e) => {
     const die = e.target.closest(".die");
     if (die) handleHold(Number(die.dataset.index));
 });
-$("score-body").addEventListener("click", (e) => {
+byId("score-body").addEventListener("click", (e) => {
     const pick = e.target.closest(".pick");
     if (pick) handlePick(pick.dataset.category);
 });
@@ -441,7 +445,7 @@ async function init() {
         if (state.isGameOver) showGameOver(state.result);
     } catch (err) {
         errorMessage = "Cannot reach the server. Is it running?";
-        $("message").innerHTML = `<p>${errorMessage}</p>`;
+        byId("message").innerHTML = `<p>${errorMessage}</p>`;
     } finally {
         busy = false;
         render();

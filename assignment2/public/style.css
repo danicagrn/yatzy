@@ -399,14 +399,9 @@ button { font: inherit; cursor: pointer; }
 
 
 /*  Motion  */
-/* Roll animation is done with jQuery in main.js (animateDice). While a die spins, main.js sets an inline transform, so the CSS transition on transform is switched off */
+/* Roll animation is done with jQuery in main.js (animateDice). While a die spins, main.js
+   sets an inline transform, so the CSS transition on transform is switched off. */
 .die.is-spinning { transition: none; }
-
-
-@media (prefers-reduced-motion: no-preference) {
-  .die.is-rolling { animation: tumble 0.6s ease-in-out; }
-  
-}
 
 @media (prefers-reduced-motion: reduce) {
   .die, .btn { transition: none; }
