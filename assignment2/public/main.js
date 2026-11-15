@@ -1,5 +1,5 @@
-// main.js: is the client. It draws the UI and talks to server with fetch()
-// all game rules, dice rolls and scoring live on the the server
+// main.js: the client. It only draws the UI and talks to the server with fetch().
+// All game rules, dice rolls and scoring live on the server (see ../server.js).
 
 // label + rule text for every category (presentation only)
 const INFO = {
@@ -22,7 +22,8 @@ const INFO = {
 
 // Display order of the two scorecard sections
 const UPPER_CATEGORIES = ["ones", "twos", "threes", "fours", "fives", "sixes"];
-const LOWER_CATEGORIES = ["onePair", "twoPairs", "threeofAKind", "fourOfAKind", "smallStraight", "largeStraight", "fullHouse", "chance", "yatzy"];
+const LOWER_CATEGORIES = ["onePair", "twoPairs", "threeOfAKind", "fourOfAKind",
+    "smallStraight", "largeStraight", "fullHouse", "chance", "yatzy"];
 
 // Which pip positions to show for each die face
 const PIPS = {
@@ -36,11 +37,11 @@ const PIPS = {
 
 const GAME_ID_KEY = "yatzyGameId"; // remembered so a page refresh resumes the game
 
-let state = null; // the latest game state sent by the server
+let state = null;            // the latest game state sent by the server
 let selectedCategory = null; // the category the player has clicked (UI only)
-let message = "Press Roll dice to start your turn";
-let errorMessage = "" // shown instead of the normal message when a request fails
-let busy = false; // true while a request is in flight
+let message = "Press Roll dice to start your turn.";
+let errorMessage = "";       // shown instead of the normal message when a request fails
+let busy = false;            // true while a request is in flight
 
 // element shortcuts
 const $ = (id) => document.getElementById(id);
@@ -49,8 +50,8 @@ const scoreBtn = $("score-btn");
 
 /* Server communication (Fetch API) */
 
-// One helper for every request. Returns parsed JSON (or null for 204)
-// On a non-2xx response it throws an Error carrying the server's message + status
+// One helper for every request. Returns parsed JSON (or null for 204).
+// On a non-2xx response it throws an Error carrying the server's message + status.
 async function api(method, url, body) {
     const options = { method };
     if (body !== undefined) {
@@ -60,7 +61,7 @@ async function api(method, url, body) {
     const res = await fetch(url, options);
     if (res.status === 204) return null;
     const data = await res.json().catch(() => ({}));
-    if(!res.ok) {
+    if (!res.ok) {
         const err = new Error(data.error || `Request failed (${res.status})`);
         err.status = res.status;
         throw err;
@@ -70,11 +71,11 @@ async function api(method, url, body) {
 
 // Creates a game on the server and remembers its id
 async function createGame() {
-    state = await api ("POST", "/api/games");
+    state = await api("POST", "/api/games");
     sessionStorage.setItem(GAME_ID_KEY, state.id);
 }
 
-// Runs one player action: blocks double clicks, handles errors, then redraws
+// Runs one player action: blocks double clicks, handles errors, then redraws.
 async function run(action) {
     if (busy) return;
     busy = true;
@@ -83,17 +84,17 @@ async function run(action) {
         await action();
     } catch (err) {
         if (err.status === 404) {
-            // server forgot game (restart or timeout): begin a fresh one
+            // server forgot our game (restart or timeout): begin a fresh one
             try {
                 await createGame();
-                selectedCategory = null
-                $("gameover").hidden = true
-                message = "The server lost your game, so a new one was started";
+                selectedCategory = null;
+                $("gameover").hidden = true;
+                message = "The server lost your game, so a new one was started.";
             } catch (e) {
                 errorMessage = "Cannot reach the server. Is it running?";
             }
         } else if (err instanceof TypeError) {
-            errorMessage = "Cannot reach the server. Is it Running"; // fetch network failure
+            errorMessage = "Cannot reach the server. Is it running?"; // fetch network failure
         } else {
             errorMessage = err.message;
         }
@@ -120,7 +121,7 @@ function renderRollMeter() {
     const left = state.maxRolls - state.rollsUsed;
     let dots = "";
     for (let i = 0; i < state.maxRolls; i++) {
-        dots += `<span class="dot ${i < game.rollsUsed ? "used" : ""}"></span>`;
+        dots += `<span class="dot ${i < state.rollsUsed ? "used" : ""}"></span>`;
     }
     $("roll-meter").innerHTML =
         dots + `<p>${left} roll${left === 1 ? "" : "s"} left</p>`;
@@ -141,7 +142,7 @@ function renderDice() {
             <li class="die-slot ${held[i] ? "is-held" : ""}">
                 <button class="die ${rolled ? "" : "is-blank"}" data-index="${i}"
                     aria-pressed="${held[i]}" aria-label="${label}"
-                    ${rolled && !game.isGameOver ? "" : "disabled"}>${pips}</button>
+                    ${rolled && !state.isGameOver ? "" : "disabled"}>${pips}</button>
                 <span class="die-tag">${tag}</span>
             </li>`;
     }).join("");
@@ -150,7 +151,7 @@ function renderDice() {
 function renderScorecard() {
     const canPick = state.rollsUsed > 0 && !state.isGameOver;
 
-    // One row per category : locked score, clickable potential score, or a dash
+    // One row per category: locked score, clickable potential score, or a dash
     const row = (cat) => {
         const [label, rule] = INFO[cat];
         const locked = state.scoreTable[cat];
@@ -158,11 +159,11 @@ function renderScorecard() {
         if (locked !== null) {
             cell = `<span class="score-value ${locked === 0 ? "zero" : ""}">${locked}</span>`;
         } else if (canPick) {
-            const potential = state.calculateScore(cat, dice.values);
+            const potential = state.potentialScores[cat]; // calculated by the server
             const cls = ["pick", potential === 0 ? "is-zero" : "", cat === selectedCategory ? "is-selected" : ""].join(" ");
-            cell = `<button class="${cls}" data-category="${cat}" 
-                        aria-pressed="${cat === selectedCategory}" 
-                        aria-label="Score ${potential} in ${label}">${potential}</button>`;   
+            cell = `<button class="${cls}" data-category="${cat}"
+                        aria-pressed="${cat === selectedCategory}"
+                        aria-label="Score ${potential} in ${label}">${potential}</button>`;
         } else {
             cell = `<span class="score-value dash">-</span>`;
         }
@@ -170,7 +171,7 @@ function renderScorecard() {
                 <td class="rule">${rule}</td><td class="num">${cell}</td></tr>`;
     };
 
-    const upper = state.getUpperTotal();
+    const upper = state.upperTotal;
     const pct = Math.min(100, Math.round((upper / 63) * 100));
 
     $("score-body").innerHTML = `<tr class="section-row upper"><th colspan="3" scope="colgroup">Upper section</th></tr>
@@ -180,11 +181,11 @@ function renderScorecard() {
                 <span class="bonus-progress"><span style="width:${pct}%"></span></span></td>
             <td class="num">${upper}</td></tr>
         <tr><th scope="row">Bonus</th><td class="rule">50 points at 63 or more</td>
-            <td class="num"><span class="score-value">${state.bonus()}</span></td></tr>
+            <td class="num"><span class="score-value">${state.bonus}</span></td></tr>
         <tr class="section-row lower"><th colspan="3" scope="colgroup">Lower section</th></tr>
         ${LOWER_CATEGORIES.map(row).join("")}
         <tr class="grand-total"><th scope="row" colspan="2">Total score</th>
-            <td class="num">${state.getTotalScore()}</td></tr>`;                         
+            <td class="num">${state.totalScore}</td></tr>`;
 }
 
 function renderControls() {
@@ -206,31 +207,31 @@ function renderControls() {
 
 const NUMBER_WORDS = ["zero", "one", "two", "three", "four", "five"];
 
-// the sentence case 
+// the sentence case
 const sentenceCase = (text) => text.charAt(0) + text.slice(1).toLowerCase();
 
-// describes which dice are held 
+// describes which dice are held
 function describeHeld() {
-    const counts = {}
+    const counts = {};
     state.dice.held.forEach((isHeld, i) => {
         if (isHeld) {
             const face = state.dice.values[i];
-            counts [face] = (counts[face] || 0) + 1;
+            counts[face] = (counts[face] || 0) + 1;
         }
     });
     const parts = Object.entries(counts)
         .sort((a, b) => b[1] - a[1] || b[0] - a[0])
-        .map(([face, n]) => `${NUMBER_WORDS[n]} ${face}${n > 1 ?"s" : ""}`);
+        .map(([face, n]) => `${NUMBER_WORDS[n]} ${face}${n > 1 ? "s" : ""}`);
     if (parts.length <= 1) return parts.join("");
-    return parts.slice(0, -1).join(",") + " and " + parts[parts.length -1];    
+    return parts.slice(0, -1).join(", ") + " and " + parts[parts.length - 1];
 }
 
 // second line of message box: what the best open categories would score
-// the category the player has clicked (if any) is listed first 
+// the category the player has clicked (if any) is listed first
 function scoringHint() {
-    const open = Object.keys(state.potentialScores).map(([cat, pts]) => ({ cat, pts }));
-    
-    let options = open.filter((o) => o.pts > 0). sort((a, b) => b.pts - a.pts).slice(0, 3);
+    const open = Object.entries(state.potentialScores).map(([cat, pts]) => ({ cat, pts }));
+
+    let options = open.filter((o) => o.pts > 0).sort((a, b) => b.pts - a.pts).slice(0, 3);
     if (selectedCategory && state.potentialScores[selectedCategory] !== undefined) {
         const chosen = open.find((o) => o.cat === selectedCategory);
         options = [chosen, ...options.filter((o) => o.cat !== selectedCategory)].slice(0, 3);
@@ -240,9 +241,9 @@ function scoringHint() {
     }
     return options.map((o, i) => {
         const name = sentenceCase(INFO[o.cat][0]);
-        const also = i > 0 && o.pts === options[i - 1].pts ? "also" : "";
-        return `${name} would ${also} score ${o.pts}`;
-    }).join(" ");
+        const also = i > 0 && o.pts === options[i - 1].pts ? "also " : "";
+        return `${name} would ${also}score ${o.pts}`;
+    }).join(". ") + ".";
 }
 
 function renderMessage() {
@@ -253,14 +254,14 @@ function renderMessage() {
         line1 = `Game over. Your final score is ${state.totalScore}.`;
     } else if (state.rollsUsed > 0) {
         const holding = describeHeld();
-        if (state.rollsUsed >= 3) {
+        if (state.rollsUsed >= state.maxRolls) {
             line1 = "No rolls left. Pick a category to score.";
         } else if (state.dice.held.every(Boolean)) {
             line1 = "You are holding all five dice. Pick a category to score.";
         } else if (holding) {
             line1 = `You are holding ${holding}. Roll again or score them.`;
         } else {
-            line1 = `Roll ${state.rollsUsed} done. Hold dice and roll again or pick a category to score.`
+            line1 = `Roll ${state.rollsUsed} done. Hold dice and roll again or pick a category to score.`;
         }
         line2 = scoringHint();
     }
@@ -270,7 +271,7 @@ function renderMessage() {
         line2 = "";
     }
 
-    // textContent keeps server provided text from treated as HTML
+    // textContent keeps server-provided text from being treated as HTML
     const box = $("message");
     box.innerHTML = "";
     [line1, line2].filter(Boolean).forEach((text) => {
@@ -281,7 +282,7 @@ function renderMessage() {
 }
 
 function render() {
-    if (!state) return // nothing to draw until the server has answered
+    if (!state) return; // nothing to draw until the server has answered
     renderHeader();
     renderRollMeter();
     renderDice();
@@ -290,37 +291,81 @@ function render() {
     renderMessage();
 }
 
-/* Actions (each one sends a request, then the server's answer is drawn) */
+/* Actions (each one sends a request, then the server's answer is drawn)*/
+// jQuery dice rolling animation
+// every die that is NOT held spins two full turns while flickering through random faces
+// then settles on the value the server rolled (state.dice.values)
+// Each die lasts a bit longer than the one before, so they stop one by one
+// the flicker faces are only decoration, the real values always come from the server
+// returns a promise that resolves when the last die has stopped
+function animateDice() {
+    const reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (!window.jQuery || reduceMotion) return Promise.resolve(); // no jQuery or motion off: skip
+
+    const finished = [];
+    $(".die-slot:not(.is-held) .die").each(function (order) {
+        const $die = $(this);
+        const index = Number($die.att("data-index")); // which die this is (0 to 4)
+
+        $die.addClass("is-spinning"); // turns off the CSS transition while jQuery rotates
+        const flicker = setInterval(() => {
+            $die.getHTML(pipsFor(1 + Math.floor(Math.random() * 6)));
+        }, 80)
+
+        finished.push(new Promise((resolve) => {
+            // jQuery animates a plain object: "deg" goes 0 -> 720 and step() applies it
+            $({ deg: 0 }).animate({ deg: 720 }, {
+                duration: 800 + order * 150,
+                easing: "swing",
+                step: (now) => $die.css("transform", `rotate(${now}deg)`),
+                complete: () => {
+                    clearInterval(flicker);
+                    $die.css("transform", "")          // let the CSS (hover, held) take over again
+                        .removeClass("is-spinning")
+                        .html(pipsFor(state.dice.values[index])); // the server's value
+                    resolve();
+                },
+            });
+        }));
+    });
+    return Promise.all(finished);
+
+        
+}
 
 function handleRoll() {
     return run(async () => {
         state = await api("POST", `/api/games/${state.id}/roll`);
         selectedCategory = null;
-        render();
-        // tumble animation on the dice that were just rolled 
-        document.querySelectorAll(".die-slot:not(.is-held .die")
-            .forEach((d) => d.classList.add("is-rolling"));
+       // Draw the roll counter and dice now, but leave the scorecard and hints alone
+        // until the animation ends so they don't give the result away early.
+        renderRollMeter();
+        renderDice();
+        renderControls(); // buttons stay disabled because busy is true
+        byId("message").innerHTML = "<p>Rolling...</p>";
+        await animateDice();
+        // run() calls render() when we return, which draws everything with the final values
     });
 }
 
 function handleHold(index) {
     const nowHeld = !state.dice.held[index];
     return run(async () => {
-        state = await api("PUT", `/api/games/${state.id}/dice/${index}/hold`, {held: nowHeld});
+        state = await api("PUT", `/api/games/${state.id}/dice/${index}/hold`, { held: nowHeld });
     });
 }
 
-// Picking a category is a UI selection, so it needs no server call
+// Picking a category is just a UI selection, so it needs no server call
 function handlePick(category) {
-    selectedCategory = category;;
-    render()
+    selectedCategory = category;
+    render();
 }
 
 function handleScore() {
     if (!selectedCategory) return;
     const category = selectedCategory;
     return run(async () => {
-        const data = await api("POST",`/api/games/${state.id}/score`, { category });
+        const data = await api("POST", `/api/games/${state.id}/score`, { category });
         state = data;
         selectedCategory = null;
         if (state.isGameOver) {
@@ -346,16 +391,16 @@ function showGameOver(result) {
     $("over-lower").textContent = result.lowerTotal;
     $("over-best").textContent = result.bestScore;
     $("gameover").hidden = false;
-    $("gameover").scrollIntoView({ behavior: "smooth"});
+    $("gameover").scrollIntoView({ behavior: "smooth" });
 }
 
 function newGame() {
     return run(async () => {
-        // The server keeps the best score when a game is restarted
-        state = await api ("PUT",`/api/games/${state.id}/restart`);
+        // the server keeps the best score when a game is restarted
+        state = await api("PUT", `/api/games/${state.id}/restart`);
         selectedCategory = null;
-        message = "New Game! Press Roll to start.";
-        $("gameover").hidden = true
+        message = "New game! Press Roll dice to start.";
+        $("gameover").hidden = true;
     });
 }
 
@@ -375,7 +420,7 @@ $("score-body").addEventListener("click", (e) => {
     if (pick) handlePick(pick.dataset.category);
 });
 
-/* Start: resume the saved game if the server still has it. otherwise create one */
+/* Start: resume the saved game if the server still has it, otherwise create one */
 
 async function init() {
     busy = true;
@@ -384,14 +429,14 @@ async function init() {
         if (savedId) {
             try {
                 state = await api("GET", `/api/games/${savedId}`);
-                message = "Welecome back! Your game was restored.";
+                message = "Welcome back! Your game was restored.";
             } catch (err) {
                 if (err.status !== 404) throw err;
             }
         }
         if (!state) {
             await createGame();
-            message = "New game! Press Roll dice to start";
+            message = "New game! Press Roll dice to start.";
         }
         if (state.isGameOver) showGameOver(state.result);
     } catch (err) {

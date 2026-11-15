@@ -28,11 +28,11 @@ class Dice {
 
     // Toggles whether the die at the given index (0-4) is held
     toggleHold(index) {
-        if (index < 0 || index >= this.numberOfDice) return;
-        if (this.values[index] === 0) return;
-        this.held[index] = !this.held[index];
+    if (index < 0 || index >= this.numberOfDice) return;
+    if (this.values[index] === 0) return;
+    this.held[index] = !this.held[index];
     }
-
+    
     // clears values and holds at the start of a new turn
     reset() { 
         this.values = new Array(this.numberOfDice).fill(0);

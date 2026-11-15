@@ -106,10 +106,25 @@ Errors always look like `{ "error": "message" }`.
 | `404` | Not found | unknown game id, unknown `/api` route |
 | `409` | Breaks a game rule | 4th roll in a turn, scoring before rolling, category already scored, any action after game over, rolling with all dice held
 
-## 5. Testing
+## 5. Dice rolling animation (jQuery)
+ 
+jQuery 3.7.1 is loaded from a CDN in `index.html` **before** `main.js` (with a Google CDN fallback). `animateDice()` in `main.js` does the animation:
+ 
+| Step | What happens |
+| --- | --- |
+| 1 | The client sends `POST /api/games/:id/roll`. The **server** rolls the dice and replies with the real values. |
+| 2 | Every die that is **not held** spins two full turns using jQuery `.animate()` and flickers through random faces. Held dice stay still. |
+| 3 | Each die lasts 150 ms longer than the one before, so they stop one by one. |
+| 4 | Each die settles on the value the server rolled. The flicker faces are only decoration. |
+| 5 | The scorecard and hints are drawn after the last die stops, so they don't give the result away early. |
+ 
+- The Roll and Score buttons and the scorecard are locked while the dice spin.
+- If the player's system asks for reduced motion (`prefers-reduced-motion`), or jQuery fails to load, the animation is skipped and the dice just show the result.
+
+## 6. Testing
  run `npm start`, open the page, play a full game, then refresh mid-game to confirm it resumes.
 
-## 6. Notes and Limitations
+## 7. Notes and Limitations
 
 - Game state is stored **in memory**. Restarting the server clears all games (the client then starts a new one).
 - single player only. Each browser tab has its own game

@@ -399,14 +399,9 @@ button { font: inherit; cursor: pointer; }
 
 
 /*  Motion  */
-/* Roll: dice tumble while rolling (the JS build will add .is-rolling for ~0.6s) */
-@keyframes tumble {
-  0%   { transform: translateY(0) rotate(0); }
-  25%  { transform: translateY(-14px) rotate(-14deg); }
-  50%  { transform: translateY(0) rotate(10deg); }
-  75%  { transform: translateY(-8px) rotate(-6deg); }
-  100% { transform: translateY(0) rotate(0); }
-}
+/* Roll animation is done with jQuery in main.js (animateDice). While a die spins, main.js sets an inline transform, so the CSS transition on transform is switched off */
+.die.is-spinning { transition: none; }
+
 
 @media (prefers-reduced-motion: no-preference) {
   .die.is-rolling { animation: tumble 0.6s ease-in-out; }
