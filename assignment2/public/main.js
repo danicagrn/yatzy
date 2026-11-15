@@ -44,7 +44,7 @@ let errorMessage = "";       // shown instead of the normal message when a reque
 let busy = false;            // true while a request is in flight
 
 // element shortcuts
-const $ = (id) => document.getElementById(id);
+const byId = (id) => document.getElementById(id);
 const rollBtn = $("roll-btn");
 const scoreBtn = $("score-btn");
 
