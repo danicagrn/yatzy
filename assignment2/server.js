@@ -2,7 +2,7 @@
 // the server owns the game: dice rolls, holds, score calculation and round
 // progress all happens here. The browser only sends actions and draws the state the server sends back
 
-const express = requrire("express");
+const express = require("express");
 const path = require("path");
 const { randomUUID } = require("crypto");
 const { YatzyGame, TOTAL_ROUNDS, MAX_ROLLS_PER_TURN } = require("./game/yatzy_game");
